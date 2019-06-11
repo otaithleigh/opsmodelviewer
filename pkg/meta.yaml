@@ -1,0 +1,35 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: opsmodelviewer
+  version: {{ data.get('version') }}
+
+source:
+  path: ".."
+
+build:
+  noarch: python
+  entry_points: 
+    - opsmodelviewer = opsmodelviewer:main
+
+requirements:
+  host:
+    - python>=3.5
+  run:
+    - python>=3.5
+    - bokeh
+
+test:
+  imports:
+    - opsmodelviewer
+  requires:
+    - pytest
+  source_files:
+    - tests
+  commands:
+    - pytest -W ignore::DeprecationWarning
+
+about:
+  home: https://github.com/otaithleigh/opsmodelviewer
+  license: MIT
+  summary: A viewer for OpenSees models.
