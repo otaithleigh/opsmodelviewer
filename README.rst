@@ -7,7 +7,7 @@ This tool provides a means to inspect your (2-dimensional) OpenSees models.
 Installation
 ============
 
-opsmodelviewer requires `Bokeh <bokeh.pydata.org>`_, which may require
+opsmodelviewer requires `Bokeh <https://bokeh.pydata.org>`_, which may require
 additional dependencies depending on your setup. These dependencies are most
 easily handled using conda::
 
