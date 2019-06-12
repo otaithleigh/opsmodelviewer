@@ -28,8 +28,8 @@ colors = {
 }
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
-model = Model.from_json(os.path.join(ROOT, 'StrongbackFrameModel.json'),
+model = Model.from_json(os.path.join(ROOT, 'strongback.json'),
                         ['kind', 'story', 'num', 'num'], {'kind': Kind},
                         colorkey='kind',
                         colormap=colors)
-model.show('model.html')
+model.show('strongback.html')
