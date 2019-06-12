@@ -11,5 +11,6 @@ def test(c, verbose=False):
 
 @task
 def build(c):
-    """Build the conda package."""
+    """Build the packages."""
+    c.run('python setup.py bdist_wheel')
     c.run('conda build pkg')
