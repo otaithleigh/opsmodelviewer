@@ -136,7 +136,6 @@ class Model():
         self.colormap = colormap
         self.nodes = {}
         self.elements = {}
-        self.group = group
 
     def __repr__(self):
         return '<Model {} {} nodes {} elements>'.format(
