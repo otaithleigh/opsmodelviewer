@@ -17,9 +17,9 @@ class TagSpec():
     ---------
     >>> tagspec = TagSpec(['kind', 'story', 'story', 'num', 'num'])
     >>> tagspec.process_tag(104)
-    ProcessedTag(kind=0, story=1, num=4)
+    Tag(kind=0, story=1, num=4)
     >>> tagspec.process_tag(20912)
-    ProcessedTag(kind=2, story=9, num=12)
+    Tag(kind=2, story=9, num=12)
 
     Example 2
     ---------
@@ -30,9 +30,9 @@ class TagSpec():
     >>> tagspec = TagSpec(['kind', 'story', 'story', 'num', 'num'],
                           {'kind': TagKind})
     >>> tagspec.process_tag(104)
-    ProcessedTag(kind=<TagKind.COLUMN: 0>, story=1, num=4)
+    Tag(kind=<TagKind.COLUMN: 0>, story=1, num=4)
     >>> tagspec.process_tag(20912)
-    ProcessedTag(kind=<TagKind.BRACE: 2>, story=9, num=12)
+    Tag(kind=<TagKind.BRACE: 2>, story=9, num=12)
     """
 
     def __init__(self, spec, mapping=None):
