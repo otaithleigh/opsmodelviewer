@@ -3,6 +3,7 @@ import json
 
 import bokeh.models
 import bokeh.plotting
+import pandas as pd
 
 
 class TagSpec():
@@ -116,7 +117,7 @@ class Model():
             need to be defined for every field; if not present, the integer is
             returned unchanged for that field.
         colorkey : str, optional
-            Field name that provides keys for `colormap`.
+            Field name that provides keys for `colormap`. Also used for legends.
         colormap : dict, optional
             Dict of colors that map post-processed values to colors. The field
             that provides the keys is specified by `colorkey`.
@@ -127,7 +128,7 @@ class Model():
             pass
         else:
             raise TypeError('colorkey and colormap must be specified together')
-        if colorkey not in spec:
+        if colorkey is not None and colorkey not in spec:
             raise ValueError('colorkey {!r} not found in spec {!r}'.format(
                 colorkey, spec))
         self.tagspec = TagSpec(spec, mapping=mapping)
@@ -135,6 +136,7 @@ class Model():
         self.colormap = colormap
         self.nodes = {}
         self.elements = {}
+        self.group = group
 
     def __repr__(self):
         return '<Model {} {} nodes {} elements>'.format(
@@ -149,34 +151,54 @@ class Model():
         self.elements[tag] = Element(ptag, i, j)
 
     def _node_data(self):
+        tags = []
         x = []
         y = []
         color = []
         label = []
-        for node in self.nodes.values():
+        meta = {key: [] for key in self.tagspec._spec.keys()}
+        for tag, node in self.nodes.items():
+            tags.append(tag)
             x.append(node.x)
             y.append(node.y)
             if self.colorkey is not None:
                 key = getattr(node.tag, self.colorkey)
                 color.append(self.colormap[key])
                 label.append(str(key))
-        return bokeh.models.ColumnDataSource({
-            'x': x,
-            'y': y,
-            'color': color,
-            'label': label
-        })
+            for key in meta.keys():
+                meta[key].append(getattr(node.tag, key))
+        if self.colorkey is None:
+            color = None
+            label = 'Nodes'
+        data = pd.DataFrame({
+            '_tag': tags,
+            '_x': x,
+            '_y': y,
+            '_color': color,
+            '_label': label,
+            **meta
+        }).set_index('_tag')
+        metakeys = {key: '@' + key for key in meta.keys()}
+        tooltips = {'node': '@_tag', 'x': '@_x', 'y': '@_y', **metakeys}
+        return data, tooltips
 
     def _element_data(self):
+        tags = []
+        inodes = []
+        jnodes = []
         x0 = []
         x1 = []
         y0 = []
         y1 = []
         color = []
         label = []
-        for element in self.elements.values():
+        meta = {key: [] for key in self.tagspec._spec.keys()}
+        for tag, element in self.elements.items():
             inode = self.nodes[element.inode]
             jnode = self.nodes[element.jnode]
+            tags.append(tag)
+            inodes.append(element.inode)
+            jnodes.append(element.jnode)
             x0.append(inode.x)
             x1.append(jnode.x)
             y0.append(inode.y)
@@ -185,14 +207,34 @@ class Model():
                 key = getattr(element.tag, self.colorkey)
                 color.append(self.colormap[key])
                 label.append(str(key))
-        return bokeh.models.ColumnDataSource({
-            'x0': x0,
-            'x1': x1,
-            'y0': y0,
-            'y1': y1,
-            'color': color,
-            'label': label
-        })
+            for key in meta.keys():
+                meta[key].append(getattr(element.tag, key))
+        if self.colorkey is None:
+            color = None
+            label = 'Elements'
+        elif not self.group:
+            element_labeler = lambda l: 'Element ' + l
+            label = [*map(element_labeler, label)]
+        data = pd.DataFrame({
+            '_tag': tags,
+            '_inode': inodes,
+            '_jnode': jnodes,
+            '_x0': x0,
+            '_x1': x1,
+            '_y0': y0,
+            '_y1': y1,
+            '_color': color,
+            '_label': label,
+            **meta
+        }).set_index('_tag')
+        metakeys = {key: '@' + key for key in meta.keys()}
+        tooltips = {
+            'element': '@_tag',
+            'inode': '@_inode',
+            'jnode': '@_jnode',
+            **metakeys
+        }
+        return data, tooltips
 
     def show(self, output, title='Model'):
         bokeh.plotting.output_file(output)
@@ -200,24 +242,42 @@ class Model():
                                      toolbar_location='above',
                                      active_scroll='wheel_zoom')
 
-        node_data = self._node_data()
-        plot.circle(x='x',
-                    y='y',
-                    color='color',
-                    legend='label',
-                    source=node_data)
+        # Plot nodes
+        node_data, node_tooltips = self._node_data()
+        node_renderers = []
+        for label, data in node_data.groupby('_label'):
+            node_renderers.append(
+                plot.circle(x='_x',
+                            y='_y',
+                            color='_color',
+                            legend='_label',
+                            size=8,
+                            source=data))
+        plot.add_tools(
+            bokeh.models.HoverTool(renderers=node_renderers,
+                                   tooltips=node_tooltips))
 
-        element_data = self._element_data()
-        plot.segment(x0='x0',
-                     y0='y0',
-                     x1='x1',
-                     y1='y1',
-                     color='color',
-                     legend='label',
-                     source=element_data)
+        # Plot elements
+        element_data, element_tooltips = self._element_data()
+        element_renderers = []
+        for label, data in element_data.groupby('_label'):
+            element_renderers.append(
+                plot.segment(x0='_x0',
+                             y0='_y0',
+                             x1='_x1',
+                             color='_color',
+                             y1='_y1',
+                             legend='_label',
+                             line_width=2,
+                             source=data))
+        plot.add_tools(
+            bokeh.models.HoverTool(line_policy='interp',
+                                   renderers=element_renderers,
+                                   tooltips=element_tooltips))
 
         plot.add_layout(plot.legend[0], 'right')
         plot.sizing_mode = 'scale_height'
+        plot.legend.click_policy = 'hide'
         bokeh.plotting.show(plot)
 
     @classmethod

@@ -2,34 +2,38 @@ import enum
 import os
 from opsmodelviewer import Model
 
+kinds = {
+    0: 'LEFT',
+    1: 'RIGHT',
+    2: 'LEAN',
+    3: 'BEAM',
+    4: 'BRACE',
+    5: 'SBACK',
+    6: 'TIE',
+    7: 'RIGID',
+    8: 'SPRING',
+}
 
-class Kind(enum.Enum):
-    LEFT = 0
-    RIGHT = 1
-    LEAN = 2
-    BEAM = 3
-    BRACE = 4
-    SBACK = 5
-    TIE = 6
-    RIGID = 7
-    SPRING = 8
+
+def kind(v):
+    return kinds[v]
 
 
 colors = {
-    Kind.LEFT: '#a6cee3',
-    Kind.RIGHT: '#1f78b4',
-    Kind.LEAN: '#b2df8a',
-    Kind.BEAM: '#33a02c',
-    Kind.BRACE: '#fb9a99',
-    Kind.SBACK: '#e31a1c',
-    Kind.TIE: '#fdbf6f',
-    Kind.RIGID: '#ff7f00',
-    Kind.SPRING: '#cab2d6',
+    'LEFT': '#a6cee3',
+    'RIGHT': '#1f78b4',
+    'LEAN': '#b2df8a',
+    'BEAM': '#33a02c',
+    'BRACE': '#fb9a99',
+    'SBACK': '#e31a1c',
+    'TIE': '#fdbf6f',
+    'RIGID': '#ff7f00',
+    'SPRING': '#cab2d6',
 }
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 model = Model.from_json(os.path.join(ROOT, 'strongback.json'),
-                        ['kind', 'story', 'num', 'num'], {'kind': Kind},
+                        ['kind', 'story', 'num', 'num'], {'kind': kind},
                         colorkey='kind',
                         colormap=colors)
 model.show('strongback.html')

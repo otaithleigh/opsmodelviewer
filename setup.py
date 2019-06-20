@@ -18,7 +18,7 @@ setup(
     },
 
     python_requires='>=3.5',
-    install_requires=['bokeh'],
+    install_requires=['bokeh', 'pandas'],
 
     author='Peter Talley',
     author_email='ptalley2@vols.utk.edu',
