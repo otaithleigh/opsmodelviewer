@@ -211,9 +211,6 @@ class Model():
         if self.colorkey is None:
             color = None
             label = 'Elements'
-        elif not self.group:
-            element_labeler = lambda l: 'Element ' + l
-            label = [*map(element_labeler, label)]
         data = pd.DataFrame({
             '_tag': tags,
             '_inode': inodes,
