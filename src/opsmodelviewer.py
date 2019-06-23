@@ -89,6 +89,43 @@ class TagSpec():
 
         return self._tagfactory(**p)
 
+    def create_tag(self, default=0, **kwargs) -> int:
+        """Create a tag from the spec.
+
+        Parameters
+        ----------
+        default : int, optional
+            Default value for fields. (default: 0)
+        **kwargs
+            Mapping of field names to values. Missing fields use `default`.
+
+        Returns
+        -------
+        tag : int
+            Tag that corresponds to the internal spec.
+
+        Example
+        -------
+        >>> tagspec = TagSpec(['kind', 'story', 'num'])
+        >>> tagspec.create_tag(kind=3, story=1, num=9)
+        319
+        >>> tagspec.create_tag(kind=1, num=8)
+        108
+        >>> tagspec.create_tag(kind=0, story=1, num=3)
+        13
+        """
+        tag = [''] * self._speclen
+        for field, indices in self._specdict.items():
+            value = kwargs.get(field, default)
+            field_length = len(indices)
+            value_str = '{:0{}d}'.format(value, field_length)
+            if len(value_str) > field_length:
+                raise ValueError('{} exceeds the available'
+                                 ' digits for field {!r}'.format(value, field))
+            for i, d in zip(indices, value_str):
+                tag[i] = d
+        return int(''.join(tag))
+
 
 class Node():
     def __init__(self, tag, x, y):
