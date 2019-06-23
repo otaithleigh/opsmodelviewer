@@ -280,9 +280,13 @@ class Model():
     def from_json(cls, file, spec, mapping=None, colorkey=None, colormap=None):
         """Load a model from OpenSees JSON output.
 
-        Create the output with::
+        In OpenSees Tcl, create the output with::
 
             print -JSON {file}
+
+        In OpenSeesPy, create the output with::
+
+            ops.printModel('-JSON', '-file', file)
 
         Parameters
         ----------
