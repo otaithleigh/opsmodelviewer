@@ -192,7 +192,7 @@ class Model():
         y = []
         color = []
         label = []
-        meta = {key: [] for key in self.tagspec._spec.keys()}
+        meta = {key: [] for key in self.tagspec._specdict.keys()}
         for tag, node in self.nodes.items():
             tags.append(tag)
             x.append(node.x)
@@ -228,7 +228,7 @@ class Model():
         y1 = []
         color = []
         label = []
-        meta = {key: [] for key in self.tagspec._spec.keys()}
+        meta = {key: [] for key in self.tagspec._specdict.keys()}
         for tag, element in self.elements.items():
             inode = self.nodes[element.inode]
             jnode = self.nodes[element.jnode]
