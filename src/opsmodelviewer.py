@@ -51,15 +51,15 @@ class TagSpec():
         spec_dict = collections.defaultdict(lambda: [])
         for i, v in enumerate(spec):
             spec_dict[v].append(i)
-        self._rawspec = spec
-        self._spec = dict(spec_dict)
+        self.spec = spec
+        self._specdict = dict(spec_dict)
         self._speclen = len(spec)
-        self._mapping = {} if mapping is None else mapping
+        self.mapping = {} if mapping is None else mapping
         self._tagfactory = collections.namedtuple('Tag', spec_dict.keys())
 
     def __repr__(self):
         return 'TagSpec(spec={!r}, mapping={!r})'.format(
-            self._rawspec, self._mapping)
+            self.spec, self.mapping)
 
     def process_tag(self, tag):
         """Process a single tag.
@@ -79,13 +79,13 @@ class TagSpec():
         if len(tagstr) > self._speclen:
             raise ValueError('tag {} is longer than the spec'.format(tag))
 
-        p = {field: [] for field in self._spec.keys()}
-        for field, indices in self._spec.items():
+        p = {field: [] for field in self._specdict.keys()}
+        for field, indices in self._specdict.items():
             for i in indices:
                 p[field].append(tagstr[i])
         for field, values in p.items():
             int_val = int(''.join(values))
-            p[field] = self._mapping.get(field, lambda x: x)(int_val)
+            p[field] = self.mapping.get(field, lambda x: x)(int_val)
 
         return self._tagfactory(**p)
 
