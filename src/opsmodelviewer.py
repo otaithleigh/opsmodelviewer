@@ -1,7 +1,9 @@
 import collections
 import json
+import warnings
 
 import bokeh.models
+import bokeh.palettes
 import bokeh.plotting
 import pandas as pd
 
@@ -142,7 +144,7 @@ class Element():
 
 
 class Model():
-    def __init__(self, spec, mapping=None, colorkey=None, colormap=None):
+    def __init__(self, spec, mapping=None, colorkey=None, palette=None):
         """
         Parameters
         ----------
@@ -154,37 +156,51 @@ class Model():
             need to be defined for every field; if not present, the integer is
             returned unchanged for that field.
         colorkey : str, optional
-            Field name that provides keys for `colormap`. Also used for legends.
-        colormap : dict, optional
-            Dict of colors that map post-processed values to colors. The field
-            that provides the keys is specified by `colorkey`.
+            Field name that provides keys for `palette`. Also used for legends.
+        palette : list, optional
+            List of colors to cycle through. (default: Category10_10)
         """
-        if colorkey is None and colormap is None:
-            pass
-        elif colorkey is not None and colormap is not None:
-            pass
-        else:
-            raise TypeError('colorkey and colormap must be specified together')
         if colorkey is not None and colorkey not in spec:
             raise ValueError('colorkey {!r} not found in spec {!r}'.format(
                 colorkey, spec))
+        if colorkey is not None and palette is None:
+            palette = bokeh.palettes.Category10_10
         self.tagspec = TagSpec(spec, mapping=mapping)
         self.colorkey = colorkey
-        self.colormap = colormap
+        self._colorkeyindex = self.tagspec._tagfactory._fields.index(colorkey)
+        self.palette = palette
+        self._palette_iter = iter(self.palette)
         self.nodes = {}
         self.elements = {}
+        self._colormap = {}
 
     def __repr__(self):
         return '<Model {} {} nodes {} elements>'.format(
             self.tagspec, len(self.nodes), len(self.elements))
 
+    def _get_next_color(self):
+        """Return the next color in the palette, starting over when it ends."""
+        try:
+            return next(self._palette_iter)
+        except StopIteration:
+            self._palette_iter = iter(self.palette)
+            return next(self._palette_iter)
+
+    def _add_to_colormap(self, ptag):
+        if self.colorkey is not None:
+            colorval = ptag[self._colorkeyindex]
+            if colorval not in self._colormap:
+                self._colormap[colorval] = self._get_next_color()
+
     def add_node(self, tag, x, y):
         ptag = self.tagspec.process_tag(tag)
         self.nodes[tag] = Node(ptag, x, y)
+        self._add_to_colormap(ptag)
 
     def add_element(self, tag, i, j):
         ptag = self.tagspec.process_tag(tag)
         self.elements[tag] = Element(ptag, i, j)
+        self._add_to_colormap(ptag)
 
     def _node_data(self):
         tags = []
@@ -199,7 +215,7 @@ class Model():
             y.append(node.y)
             if self.colorkey is not None:
                 key = getattr(node.tag, self.colorkey)
-                color.append(self.colormap[key])
+                color.append(self._colormap[key])
                 label.append(str(key))
             for key in meta.keys():
                 meta[key].append(getattr(node.tag, key))
@@ -241,7 +257,7 @@ class Model():
             y1.append(jnode.y)
             if self.colorkey is not None:
                 key = getattr(element.tag, self.colorkey)
-                color.append(self.colormap[key])
+                color.append(self._colormap[key])
                 label.append(str(key))
             for key in meta.keys():
                 meta[key].append(getattr(element.tag, key))
@@ -314,7 +330,7 @@ class Model():
         bokeh.plotting.show(plot)
 
     @classmethod
-    def from_json(cls, file, spec, mapping=None, colorkey=None, colormap=None):
+    def from_json(cls, file, spec, mapping=None, colorkey=None, palette=None, colormap=None):
         """Load a model from OpenSees JSON output.
 
         In OpenSees Tcl, create the output with::
@@ -337,12 +353,17 @@ class Model():
             need to be defined for every field; if not present, the integer is
             returned unchanged for that field.
         colorkey : str, optional
-            Field name that provides keys for `colormap`.
+            Field name that provides keys for `palette`. Also used for legends.
+        palette : list, optional
+            List of colors to cycle through. (default: Category10_10)
         colormap : dict, optional
-            Dict of colors that map post-processed values to colors. The field
-            that provides the keys is specified by `colorkey`.
+            Deprecated; use `palette` instead.
         """
-        model = cls(spec, mapping, colorkey, colormap)
+        if colormap is not None:
+            warnings.warn('colormap is deprecated; use palette instead',
+                          category=DeprecationWarning)
+            palette = list(colormap.values())
+        model = cls(spec, mapping, colorkey, palette)
 
         with open(file) as f:
             d = json.load(f)
