@@ -28,3 +28,15 @@ def test_enum_tag():
     assert ptag.a == TagKind.COLUMN
     assert ptag.b == 10
     assert ptag.c == 4
+
+
+def test_create_basic_tag():
+    tagspec = TagSpec('aabbc')
+    tag = tagspec.create_tag(a=20, b=10, c=4)
+    assert tag == 20104
+
+
+def test_create_short_tag():
+    tagspec = TagSpec('aabbc')
+    tag = tagspec.create_tag(a=0, b=10, c=4)
+    assert tag == 104
