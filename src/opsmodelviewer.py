@@ -130,10 +130,12 @@ class TagSpec():
 
 
 class Node():
-    def __init__(self, tag, x, y):
+    def __init__(self, tag, x, y, x_disp=0.0, y_disp=0.0):
         self.tag = tag
         self.x = x
         self.y = y
+        self.x_disp = x_disp
+        self.y_disp = y_disp
 
 
 class Element():
@@ -141,6 +143,38 @@ class Element():
         self.tag = tag
         self.inode = inode
         self.jnode = jnode
+
+
+def _update_deformed_shape_scale(nodes, elements):
+    return bokeh.models.CustomJS(args=dict(nodes=nodes, elements=elements),
+                                 code="""
+    var scale = cb_obj.value
+
+    // Nodes
+    var node_data = nodes.data
+    var x = node_data['_x']
+    var y = node_data['_y']
+    var x_disp = node_data['_x_disp']
+    var y_disp = node_data['_y_disp']
+
+    for (var i = 0; i < x.length; i++) {
+        x[i] = x[i] + scale*x_disp[i]
+        y[i] = y[i] + scale*y_disp[i]
+    }
+
+    // Elements
+    var ele_data = elements.data
+    var x0 = ele_data['_x0']
+    var x1 = ele_data['_x1']
+    var y0 = ele_data['_y0']
+    var y1 = ele_data['_y1']
+    for (var i = 0; i < x0.length; i++) {
+        x[i] = x[i] + scale*x_disp[i]
+    }
+
+    nodes.change.emit();
+    elements.change.emit();
+""")
 
 
 class Model():
@@ -160,12 +194,15 @@ class Model():
         palette : list, optional
             List of colors to cycle through. (default: Category10_10)
         """
-        if colorkey is not None and colorkey not in spec:
-            raise ValueError('colorkey {!r} not found in spec {!r}'.format(
-                colorkey, spec))
         if colorkey is not None and palette is None:
             palette = bokeh.palettes.Category10_10
-        self.tagspec = TagSpec(spec, mapping=mapping)
+        if isinstance(spec, TagSpec):
+            self.tagspec = spec
+        else:
+            self.tagspec = TagSpec(spec, mapping=mapping)
+        if colorkey is not None and colorkey not in self.tagspec.spec:
+            raise ValueError('colorkey {!r} not found in spec {!r}'.format(
+                colorkey, spec))
         self.colorkey = colorkey
         self._colorkeyindex = self.tagspec._tagfactory._fields.index(colorkey)
         self.palette = palette
@@ -173,6 +210,13 @@ class Model():
         self.nodes = {}
         self.elements = {}
         self._colormap = {}
+
+        # Defaults
+        self.title = 'Model'
+        self.scale_default = 1.0
+        self.scale_min = 0.1
+        self.scale_max = 10.0
+        self.scale_step = 0.1
 
     def __repr__(self):
         return '<Model {} {} nodes {} elements>'.format(
@@ -202,7 +246,20 @@ class Model():
         self.elements[tag] = Element(ptag, i, j)
         self._add_to_colormap(ptag)
 
-    def _node_data(self):
+    def add_deformed_shape_data(self, x_disp: dict, y_disp: dict):
+        """
+        Parameters
+        ----------
+        x_disp : dict
+            Dict mapping node tags to x-direction displacements.
+        y_disp : dict
+            Dict mapping node tags to y-direction displacements.
+        """
+        for tag, disp in x_disp.items():
+            self.nodes[tag].x_disp = disp
+            self.nodes[tag].y_disp = y_disp[tag]
+
+    def _node_data(self, scale=1.0):
         tags = []
         x = []
         y = []
@@ -211,8 +268,8 @@ class Model():
         meta = {key: [] for key in self.tagspec._specdict.keys()}
         for tag, node in self.nodes.items():
             tags.append(tag)
-            x.append(node.x)
-            y.append(node.y)
+            x.append(node.x + scale*node.x_disp)
+            y.append(node.y + scale*node.y_disp)
             if self.colorkey is not None:
                 key = getattr(node.tag, self.colorkey)
                 color.append(self._colormap[key])
@@ -234,7 +291,7 @@ class Model():
         tooltips = {'node': '@_tag', 'x': '@_x', 'y': '@_y', **metakeys}
         return data, tooltips
 
-    def _element_data(self):
+    def _element_data(self, scale=1.0):
         tags = []
         inodes = []
         jnodes = []
@@ -251,10 +308,10 @@ class Model():
             tags.append(tag)
             inodes.append(element.inode)
             jnodes.append(element.jnode)
-            x0.append(inode.x)
-            x1.append(jnode.x)
-            y0.append(inode.y)
-            y1.append(jnode.y)
+            x0.append(inode.x + scale*inode.x_disp)
+            x1.append(jnode.x + scale*jnode.x_disp)
+            y0.append(inode.y + scale*inode.y_disp)
+            y1.append(jnode.y + scale*jnode.y_disp)
             if self.colorkey is not None:
                 key = getattr(element.tag, self.colorkey)
                 color.append(self._colormap[key])
@@ -285,14 +342,14 @@ class Model():
         }
         return data, tooltips
 
-    def show(self, output, title='Model'):
-        bokeh.plotting.output_file(output)
-        plot = bokeh.plotting.figure(title=title,
+    def show(self, output, scale=1.0):
+        bokeh.plotting.output_file(output, title=self.title)
+        plot = bokeh.plotting.figure(title=self.title,
                                      toolbar_location='above',
                                      active_scroll='wheel_zoom')
 
         # Plot nodes
-        node_data, node_tooltips = self._node_data()
+        node_data, node_tooltips = self._node_data(scale)
         node_renderers = []
         for label, data in node_data.groupby('_label'):
             node_renderers.append(
@@ -307,7 +364,7 @@ class Model():
                                    tooltips=node_tooltips))
 
         # Plot elements
-        element_data, element_tooltips = self._element_data()
+        element_data, element_tooltips = self._element_data(scale)
         element_renderers = []
         for label, data in element_data.groupby('_label'):
             element_renderers.append(
