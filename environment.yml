@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python
   - bokeh
+  - pandas
   # Documentation
   - sphinx
   - doc8
