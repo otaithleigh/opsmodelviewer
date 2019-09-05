@@ -29,7 +29,7 @@ colors = bokeh.palettes.Category10[len(kinds)]
 # a field; the names are not important. For example, a tag processed according
 # to the spec below would have one digit assigned to `kind`, one to `story`, and
 # two to `num`. So 2210 is the tag for kind 2, story 2, num 10. Missing digits
-# filled with zeroes; 210 is the tag for kind 0, story 2, num 10.
+# are filled with zeroes; 210 is the tag for kind 0, story 2, num 10.
 tag_spec = ['kind', 'story', 'num', 'num']
 
 # The tag mapping takes the integers parsed from the tag and applies a function
