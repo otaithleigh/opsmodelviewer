@@ -2,6 +2,7 @@ import collections
 import json
 import warnings
 
+import bokeh.layouts
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
@@ -37,7 +38,6 @@ class TagSpec():
     >>> tagspec.process_tag(20912)
     Tag(kind=<TagKind.BRACE: 2>, story=9, num=12)
     """
-
     def __init__(self, spec, mapping=None):
         """
         Parameters
@@ -116,7 +116,7 @@ class TagSpec():
         >>> tagspec.create_tag(kind=0, story=1, num=3)
         13
         """
-        tag = [''] * self._speclen
+        tag = ['']*self._speclen
         for field, indices in self._specdict.items():
             value = kwargs.get(field, default)
             field_length = len(indices)
@@ -137,12 +137,19 @@ class Node():
         self.x_disp = x_disp
         self.y_disp = y_disp
 
+    def __repr__(self):
+        return 'Node(tag={!r}, x={!r}, y={!r})'.format(self.tag, self.x, self.y)
+
 
 class Element():
     def __init__(self, tag, inode, jnode):
         self.tag = tag
         self.inode = inode
         self.jnode = jnode
+
+    def __repr__(self):
+        return 'Element(tag={!r}, inode={!r}, jnode={!r})'.format(
+            self.tag, self.inode, self.jnode)
 
 
 def _update_deformed_shape_scale(nodes, elements):
@@ -213,14 +220,40 @@ class Model():
 
         # Defaults
         self.title = 'Model'
+        self.sizing_mode = 'scale_height'
+        self.legend_visible = True
+        self.legend_position = None
+        self.node_size = 6
+        self.element_width = 2
         self.scale_default = 1.0
         self.scale_min = 0.1
         self.scale_max = 10.0
         self.scale_step = 0.1
 
     def __repr__(self):
-        return '<Model {} {} nodes {} elements>'.format(
-            self.tagspec, len(self.nodes), len(self.elements))
+        return '<Model {} {} nodes {} elements>'.format(self.tagspec,
+                                                        len(self.nodes),
+                                                        len(self.elements))
+
+    @property
+    def legend_position(self):
+        """Position/visibility of the legend.
+
+        Options: {None, 'left', 'right', 'above', 'below'}
+
+        None leaves the legend in its default position. Other options move the
+        legend off the plot itself in the direction indicated.
+        """
+        return self._legend_position
+
+    @legend_position.setter
+    def legend_position(self, value):
+        valid_positions = {None, 'left', 'right', 'above', 'below'}
+        if value not in valid_positions:
+            raise ValueError(
+                'legend_position: expected one of {!r}, got {!r}'.format(
+                    valid_positions, value))
+        self._legend_position = value
 
     def _get_next_color(self):
         """Return the next color in the palette, starting over when it ends."""
@@ -342,11 +375,11 @@ class Model():
         }
         return data, tooltips
 
-    def show(self, output, scale=1.0):
-        bokeh.plotting.output_file(output, title=self.title)
+    def create_plot(self, scale=1.0):
         plot = bokeh.plotting.figure(title=self.title,
                                      toolbar_location='above',
-                                     active_scroll='wheel_zoom')
+                                     active_scroll='wheel_zoom',
+                                     match_aspect=True)
 
         # Plot nodes
         node_data, node_tooltips = self._node_data(scale)
@@ -357,7 +390,7 @@ class Model():
                             y='_y',
                             color='_color',
                             legend='_label',
-                            size=8,
+                            size=self.node_size,
                             source=data))
         plot.add_tools(
             bokeh.models.HoverTool(renderers=node_renderers,
@@ -374,20 +407,68 @@ class Model():
                              color='_color',
                              y1='_y1',
                              legend='_label',
-                             line_width=2,
+                             line_width=self.element_width,
                              source=data))
         plot.add_tools(
             bokeh.models.HoverTool(line_policy='interp',
                                    renderers=element_renderers,
                                    tooltips=element_tooltips))
 
-        plot.add_layout(plot.legend[0], 'right')
-        plot.sizing_mode = 'scale_height'
+        # Node tags on plot
+        nodetags = bokeh.models.LabelSet(
+            x='_x',
+            y='_y',
+            text='_tag',
+            visible=False,
+            source=bokeh.models.ColumnDataSource(node_data))
+        nodetags_toggle_callback = bokeh.models.CustomJS(args={},
+                                                         code="""\
+            if (cb_obj.active) {
+                cb_obj.button_type = 'success'
+                labels.visible = true
+            } else {
+                cb_obj.button_type = 'default'
+                labels.visible = false
+            }
+        """)
+        nodetags_toggle = bokeh.models.Toggle(label='Node tags',
+                                              callback=nodetags_toggle_callback)
+        nodetags_toggle_callback.args = {'labels': nodetags}
+
+        plot.add_layout(nodetags)
+        plot.legend[0].visible = self.legend_visible
+        if self.legend_position is not None:
+            plot.add_layout(plot.legend[0], self.legend_position)
+
+        layout = bokeh.layouts.column(
+            [
+                bokeh.layouts.row([plot], sizing_mode='scale_width'),
+                bokeh.layouts.row([nodetags_toggle], sizing_mode='scale_width')
+            ],
+            sizing_mode=self.sizing_mode,
+        )
         plot.legend.click_policy = 'hide'
-        bokeh.plotting.show(plot)
+        return layout
+
+    def show(self, output=None, scale=1.0):
+        """Show the model.
+
+        Parameters
+        ----------
+        output : str, optional
+            Path to output HTML file. If None, uses the globally-set output
+            method. (default: None)
+        scale : float, optional
+            Scale to use for the deformations. Set to 0.0 to hide the deformed
+            shape. (default: 1.0)
+        """
+        if output is not None:
+            bokeh.plotting.output_file(output, title=self.title)
+        layout = self.create_plot(scale)
+        bokeh.plotting.show(layout)
 
     @classmethod
-    def from_json(cls, file, spec, mapping=None, colorkey=None, palette=None, colormap=None):
+    def from_json(cls, file, spec, mapping=None, colorkey=None, palette=None):
         """Load a model from OpenSees JSON output.
 
         In OpenSees Tcl, create the output with::
@@ -413,13 +494,7 @@ class Model():
             Field name that provides keys for `palette`. Also used for legends.
         palette : list, optional
             List of colors to cycle through. (default: Category10_10)
-        colormap : dict, optional
-            Deprecated; use `palette` instead.
         """
-        if colormap is not None:
-            warnings.warn('colormap is deprecated; use palette instead',
-                          category=DeprecationWarning)
-            palette = list(colormap.values())
         model = cls(spec, mapping, colorkey, palette)
 
         with open(file) as f:
@@ -454,11 +529,9 @@ def main():
                         help='Pairwise mapping of fields to functions.',
                         nargs='*')
     parser.add_argument('--colorkey', help='Tag field used to select colors.')
-    parser.add_argument('--colormap',
-                        help='Pairwise list of field names and RGB hex codes.',
+    parser.add_argument('--palette',
+                        help='List of colors to cycle through, specified by RGB hex codes.',
                         nargs='*')
-    parser.add_argument('--colormapfile',
-                        help='JSON file containing color map definition.')
     args = parser.parse_args()
 
     def pairwise(iterable):
@@ -471,17 +544,11 @@ def main():
     else:
         mapping = None
 
-    if args.colormapfile is None:
-        if args.colorkey is not None:
-            colormap = dict(pairwise(args.colormap))
-        else:
-            colormap = None
-    else:
-        with open(args.colormapfile) as f:
-            colormap = json.load(f)
-
-    model = Model.from_json(args.source, args.tagspec, mapping, args.colorkey,
-                            colormap)
+    model = Model.from_json(file=args.source,
+                            spec=args.tagspec,
+                            mapping=mapping,
+                            colorkey=args.colorkey,
+                            palette=args.palette)
     model.show(args.output)
 
 
