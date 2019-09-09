@@ -5,7 +5,7 @@ with open('README.rst') as file:
 
 setup(
     name='opsmodelviewer',
-    version='0.4.0',
+    version='1.0.0',
 
     description='A viewer for 2D OpenSees models.',
     long_description=long_description,
