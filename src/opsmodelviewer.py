@@ -450,6 +450,20 @@ class Model():
         plot.legend.click_policy = 'hide'
         return layout
 
+    def save(self, file, scale=1.0):
+        """Save the viewer to an HTML file.
+        
+        Parameters
+        ----------
+        file : str
+            Path to output HTML file.
+        scale : float, optional
+            Scale to use for the deformations. Set to 0.0 to hide the deformed
+            shape. (default: 1.0)
+        """
+        layout = self.create_plot(scale)
+        bokeh.plotting.save(layout, filename=file, title=self.title)
+
     def show(self, output=None, scale=1.0):
         """Show the model.
 
