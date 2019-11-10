@@ -14,10 +14,10 @@ build:
 
 requirements:
   host:
-    - python>=3.5
+    - python>=3.6
   run:
-    - python>=3.5
-    - bokeh
+    - python>=3.6
+    - bokeh>=1.4
     - pandas
 
 test:
