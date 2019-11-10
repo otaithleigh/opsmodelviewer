@@ -389,7 +389,7 @@ class Model():
                 plot.circle(x='_x',
                             y='_y',
                             color='_color',
-                            legend='_label',
+                            legend_group='_label',
                             size=self.node_size,
                             source=data))
         plot.add_tools(
@@ -406,7 +406,7 @@ class Model():
                              x1='_x1',
                              color='_color',
                              y1='_y1',
-                             legend='_label',
+                             legend_group='_label',
                              line_width=self.element_width,
                              source=data))
         plot.add_tools(
