@@ -5,7 +5,7 @@ with open('README.rst') as file:
 
 setup(
     name='opsmodelviewer',
-    version='1.1.0',
+    version='1.2.0',
 
     description='A viewer for 2D OpenSees models.',
     long_description=long_description,
@@ -18,7 +18,7 @@ setup(
     },
 
     python_requires='>=3.6',
-    install_requires=['bokeh>=1.4', 'pandas'],
+    install_requires=['bokeh>=2.0', 'pandas'],
 
     author='Peter Talley',
     author_email='ptalley2@vols.utk.edu',
