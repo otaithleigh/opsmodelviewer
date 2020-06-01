@@ -2,8 +2,8 @@ name: opsmodelviewer
 channels:
   - defaults
 dependencies:
-  - python
-  - bokeh
+  - python=3.6
+  - bokeh=2.0
   - pandas
   # Documentation
   - sphinx
