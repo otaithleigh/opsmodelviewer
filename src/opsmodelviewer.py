@@ -421,19 +421,19 @@ class Model():
             text='_tag',
             visible=False,
             source=bokeh.models.ColumnDataSource(node_data))
-        nodetags_toggle_callback = bokeh.models.CustomJS(args={},
-                                                         code="""\
-            if (cb_obj.active) {
-                cb_obj.button_type = 'success'
-                labels.visible = true
-            } else {
-                cb_obj.button_type = 'default'
-                labels.visible = false
-            }
+        nodetags_toggle_callback = bokeh.models.CustomJS(
+            args={'labels': nodetags},
+            code="""\
+                if (cb_obj.active) {
+                    cb_obj.button_type = 'success'
+                    labels.visible = true
+                } else {
+                    cb_obj.button_type = 'default'
+                    labels.visible = false
+                }
         """)
-        nodetags_toggle = bokeh.models.Toggle(label='Node tags',
-                                              callback=nodetags_toggle_callback)
-        nodetags_toggle_callback.args = {'labels': nodetags}
+        nodetags_toggle = bokeh.models.Toggle(label='Node tags')
+        nodetags_toggle.js_on_click(nodetags_toggle_callback)
 
         plot.add_layout(nodetags)
         plot.legend[0].visible = self.legend_visible
