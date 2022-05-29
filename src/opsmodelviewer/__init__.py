@@ -1,4 +1,5 @@
 import collections
+import importlib.resources
 import json
 import warnings
 
@@ -7,6 +8,8 @@ import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
 import pandas as pd
+
+__version__ = importlib.resources.read_text(__package__, '__version__')
 
 
 class TagSpec():
