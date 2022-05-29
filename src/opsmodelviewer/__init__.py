@@ -455,7 +455,7 @@ class Model():
 
     def save(self, file, scale=1.0):
         """Save the viewer to an HTML file.
-        
+
         Parameters
         ----------
         file : str
