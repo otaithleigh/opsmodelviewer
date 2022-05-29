@@ -2,7 +2,7 @@ name: opsmodelviewer
 channels:
   - defaults
 dependencies:
-  - python=3.6
+  - python=3.8
   - bokeh=2.0
   - pandas
   # Documentation
